@@ -6,7 +6,10 @@ import {
     DndContext,
     DragStartEvent,
     DragOverlay,
-    DragEndEvent
+    DragEndEvent,
+    PointerSensor,
+    useSensor,
+    useSensors,
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove } from "@dnd-kit/sortable";
 import { createPortal } from "react-dom";
@@ -14,7 +17,7 @@ import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { ColumnContainer } from "@/components/column-container";
 
-import { Column, Id } from "@/types";
+import { Column, Id, Task } from "@/types";
 
 function generateId() {
     // Generate a random number between 0 and 10000
@@ -25,8 +28,14 @@ export const KanbanBoard = () => {
     const [columns, setColumns] = useState<Column[]>([]);
     const columnsId = useMemo(() => columns.map((col) => col.id), [columns]);
     const [activeColumn, setActiveColumn] = useState<Column | null>(null);
+    const [tasks, setTasks] = useState<Task[]>([]);
 
-    // console.log(columns);
+    // para onDeleteColumn Button funcionar corretamente
+    const sensors = useSensors(useSensor(PointerSensor, {
+        activationConstraint: {
+            distance: 3,
+        }
+    }));
 
     const onCreateColumn = () => {
         const columnToAdd: Column = {
@@ -42,6 +51,15 @@ export const KanbanBoard = () => {
         setColumns(filteredColumn);
     };
 
+    const onUpdateColumn = (id: Id, title: string) => {
+        const newColumns = columns.map((col) => {
+            if (col.id !== id) return col;
+            return { ...col, title };
+        });
+
+        setColumns(newColumns);
+    }
+
     const onDragStart = (event: DragStartEvent) => {
         console.log("DRAG START", event);
 
@@ -53,7 +71,7 @@ export const KanbanBoard = () => {
 
     const onDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
-        
+
         if (!over) return;
 
         const activeId = active.id;
@@ -75,11 +93,36 @@ export const KanbanBoard = () => {
         });
     };
 
+    const onCreateTask = (columnId: Id) => {
+        const newTask: Task = {
+            id: generateId(),
+            columnId,
+            content: `Task ${tasks.length + 1}`,
+        };
+
+        setTasks([...tasks, newTask]);
+    }
+
+    const onDeleteTask = (id: Id) => {
+        const newTasks = tasks.filter((task) => task.id !== id);
+        setTasks(newTasks);
+    }
+
+    const onUpdateTask = (id: Id, content: string) => {
+        const newTasks = tasks.map((task) => {
+            if (task.id !== id) return task;
+            return { ...task, content };
+        });
+
+        setTasks(newTasks);
+    }
+
     return (
-        <div className="m-auto flex min-h-screen w-full items-center overflow-x-auto overflow-y-hidden px-[40px]">
+        <div className="m-auto flex min-h-screen w-full items-center overflow-x-auto overflow-y-hidden px-[40px] select-none">
             <DndContext
                 onDragStart={onDragStart}
                 onDragEnd={onDragEnd}
+                sensors={sensors}
             >
                 <div className="m-auto flex gap-4"> {/* centraliza */}
                     <div className="flex gap-2">
@@ -89,6 +132,11 @@ export const KanbanBoard = () => {
                                     key={col.id}
                                     column={col}
                                     deleteColumn={onDeleteColumn}
+                                    updateColumn={onUpdateColumn}
+                                    createTask={onCreateTask}
+                                    deleteTask={onDeleteTask}
+                                    updateTask={onUpdateTask}
+                                    tasks={tasks.filter((task) => task.columnId === col.id)}
                                 />
                             ))}
                         </SortableContext>
@@ -110,6 +158,11 @@ export const KanbanBoard = () => {
                             <ColumnContainer
                                 column={activeColumn}
                                 deleteColumn={onDeleteColumn}
+                                updateColumn={onUpdateColumn}
+                                createTask={onCreateTask}
+                                deleteTask={onDeleteTask}
+                                updateTask={onUpdateTask}
+                                tasks={tasks.filter((task) => task.columnId === activeColumn.id)}
                             />
                         )}
                     </DragOverlay>,

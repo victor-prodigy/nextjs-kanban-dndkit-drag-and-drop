@@ -1,20 +1,38 @@
-import { Trash } from "lucide-react";
-import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities"; // estilo
+import { Plus, Trash } from "lucide-react";
+import { SortableContext, useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities"; // style
+import { useState, useMemo } from "react";
 
-import { Column, Id } from "@/types"
+import { Column, Id, Task } from "@/types"
 
 import { Button } from "@/components/ui/button";
+import { TasksCard } from "./tasks-card";
 
 interface ColumnContainerProps {
     column: Column;
     deleteColumn: (id: Id) => void;
+    updateColumn: (id: Id, title: string) => void;
+    createTask: (columnId: Id) => void;
+    deleteTask: (id: Id) => void;
+    updateTask: (id: Id, content: string) => void;
+    tasks: Task[];
 }
 
 export const ColumnContainer = ({
     column,
-    deleteColumn
+    deleteColumn,
+    updateColumn,
+    createTask,
+    deleteTask,
+    updateTask,
+    tasks
 }: ColumnContainerProps) => {
+    const [editMode, setEditMode] = useState(false);
+
+    const tasksIds = useMemo(() => {
+        return tasks.map((task) => task.id)
+    }, [tasks]);
+
     const {
         setNodeRef,
         attributes,
@@ -27,7 +45,8 @@ export const ColumnContainer = ({
         data: {
             type: "Column",
             column,
-        }
+        },
+        disabled: editMode,
     });
 
     const style = {
@@ -56,13 +75,35 @@ export const ColumnContainer = ({
             <div
                 {...attributes}
                 {...listeners}
+                onClick={() => {
+                    setEditMode(true);
+                }}
                 className="bg-neutral-900 h-[60px] cursor-grab rounded-md rounded-b-none p-3 font-bold border-4 border-neutral-800 flex items-center justify-between"
             >
                 <div className="flex gap-2">
                     <div className="flex items-center justify-center bg-neutral-800 px-2 py-1 text-sm rounded-full">
                         0
                     </div>
-                    {column.title}
+
+                    {!editMode && (
+                        column.title
+                    )}
+
+                    {editMode && (
+                        <input
+                            autoFocus
+                            onBlur={() => {
+                                setEditMode(false);
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key !== "Enter") return;
+                                setEditMode(false);
+                            }}
+                            value={column.title}
+                            onChange={e => updateColumn(column.id, e.target.value)}
+                            className="w-[150px] bg-black focus:border-rose-500 border rounded outline-none px-2"
+                        />
+                    )}
                 </div>
 
                 <Button
@@ -77,14 +118,30 @@ export const ColumnContainer = ({
             </div>
 
             {/* Column task container */}
-            <div className="flex flex-grow">
-                Content
+            <div className="flex flex-grow flex-col gap-4 p-2 overflow-x-hidden overflow-y-auto">
+                <SortableContext
+                    items={tasksIds}
+                >
+                    {tasks.map((task) => (
+                        <TasksCard
+                            key={task.id}
+                            task={task}
+                            deleteTask={deleteTask}
+                            updateTask={updateTask}
+                        />
+                    ))}
+                </SortableContext>
             </div>
 
             {/* Column footer */}
-            <div>
-                Footer
-            </div>
+            <Button
+                onClick={() => {
+                    createTask(column.id);
+                }}
+            >
+                <Plus className="mr-2 h-4 w-4" />
+                Add task
+            </Button>
         </div>
     )
 }
