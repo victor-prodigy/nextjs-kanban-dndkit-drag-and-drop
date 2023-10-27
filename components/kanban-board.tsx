@@ -10,12 +10,14 @@ import {
     PointerSensor,
     useSensor,
     useSensors,
+    DragOverEvent
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove } from "@dnd-kit/sortable";
 import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { ColumnContainer } from "@/components/column-container";
+import { TaskCard } from "@/components/task-card";
 
 import { Column, Id, Task } from "@/types";
 
@@ -29,6 +31,7 @@ export const KanbanBoard = () => {
     const columnsId = useMemo(() => columns.map((col) => col.id), [columns]);
     const [activeColumn, setActiveColumn] = useState<Column | null>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
+    const [activeTask, setActiveTask] = useState<Task | null>(null);
 
     // para onDeleteColumn Button funcionar corretamente
     const sensors = useSensors(useSensor(PointerSensor, {
@@ -49,6 +52,9 @@ export const KanbanBoard = () => {
     const onDeleteColumn = (id: Id) => {
         const filteredColumn = columns.filter((col) => col.id !== id);
         setColumns(filteredColumn);
+
+        const newTasks = tasks.filter((t) => t.columnId !== id);
+        setTasks(newTasks);
     };
 
     const onUpdateColumn = (id: Id, title: string) => {
@@ -63,13 +69,23 @@ export const KanbanBoard = () => {
     const onDragStart = (event: DragStartEvent) => {
         console.log("DRAG START", event);
 
+        // para Column
         if (event.active.data.current?.type === "Column") {
             setActiveColumn(event.active.data.current.column);
+            return;
+        }
+
+        // para Task
+        if (event.active.data.current?.type === "Task") {
+            setActiveTask(event.active.data.current.task);
             return;
         }
     };
 
     const onDragEnd = (event: DragEndEvent) => {
+        setActiveColumn(null);
+        setActiveTask(null);
+
         const { active, over } = event;
 
         if (!over) return;
@@ -117,15 +133,60 @@ export const KanbanBoard = () => {
         setTasks(newTasks);
     }
 
+    const onDragOver = (event: DragOverEvent) => {
+        const { active, over } = event;
+
+        if (!over) return;
+
+        const activeId = active.id;
+        const overId = over.id;
+
+        if (activeId === overId) return;
+
+        const isActiveTask = active.data.current?.type === "Task";
+        const isOverTask = over.data.current?.type === "Task";
+
+        if (!isActiveTask) return;
+
+        // Im dropping a Task over another Task
+        if (isActiveTask && isOverTask) {
+            setTasks((tasks) => {
+                const activeIndex = tasks.findIndex((t) => t.id === activeId);
+                const overIndex = tasks.findIndex((t) => t.id === overId);
+
+                // colocar a tarefa de uma coluna em tarefa de outra coluna
+                tasks[activeIndex].columnId = tasks[overIndex].columnId;
+
+                return arrayMove(tasks, activeIndex, overIndex);
+            });
+        }
+
+        const isOverAColumn = over.data.current?.type === "Column";
+
+        // Im dropping a Task over a column
+        if (isActiveTask && isOverAColumn) {
+            setTasks((tasks) => {
+                const activeIndex = tasks.findIndex((t) => t.id === activeId);
+
+                // colocar a tarefa de uma coluna em tarefa de outra coluna
+                tasks[activeIndex].columnId = overId;
+
+                return arrayMove(tasks, activeIndex, activeIndex);
+            });
+        }
+    }
+
     return (
         <div className="m-auto flex min-h-screen w-full items-center overflow-x-auto overflow-y-hidden px-[40px] select-none">
             <DndContext
                 onDragStart={onDragStart}
                 onDragEnd={onDragEnd}
                 sensors={sensors}
+                onDragOver={onDragOver}
             >
                 <div className="m-auto flex gap-4"> {/* centraliza */}
                     <div className="flex gap-2">
+                        {/* Lista Ordenável de dnd-kit */}
                         <SortableContext items={columnsId}>
                             {columns.map((col) => (
                                 <ColumnContainer
@@ -163,6 +224,14 @@ export const KanbanBoard = () => {
                                 deleteTask={onDeleteTask}
                                 updateTask={onUpdateTask}
                                 tasks={tasks.filter((task) => task.columnId === activeColumn.id)}
+                            />
+                        )}
+
+                        {activeTask && (
+                            <TaskCard
+                                task={activeTask}
+                                deleteTask={onDeleteTask}
+                                updateTask={onUpdateTask}
                             />
                         )}
                     </DragOverlay>,

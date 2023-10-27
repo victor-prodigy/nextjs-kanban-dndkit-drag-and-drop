@@ -6,7 +6,7 @@ import { useState, useMemo } from "react";
 import { Column, Id, Task } from "@/types"
 
 import { Button } from "@/components/ui/button";
-import { TasksCard } from "./tasks-card";
+import { TaskCard } from "@/components/task-card";
 
 interface ColumnContainerProps {
     column: Column;
@@ -30,7 +30,7 @@ export const ColumnContainer = ({
     const [editMode, setEditMode] = useState(false);
 
     const tasksIds = useMemo(() => {
-        return tasks.map((task) => task.id)
+        return tasks.map((task) => task.id);
     }, [tasks]);
 
     const {
@@ -59,7 +59,8 @@ export const ColumnContainer = ({
             <div // é o fundo que aparece quando está arrastando
                 ref={setNodeRef}
                 style={style}
-                className="bg-neutral-800 h-[500px] w-[350px] max-h-[500px] rounded-md flex flex-col border-2 border-rose-500 opacity-40"
+                // className="bg-neutral-800 h-[500px] w-[350px] max-h-[500px] rounded-md flex flex-col border-2 border-rose-500 opacity-40"
+                className="bg-neutral-800 h-[500px] w-[350px] max-h-[500px] rounded-md flex flex-col border-2 border-green-500 opacity-40"
             >
             </div>
         )
@@ -81,10 +82,6 @@ export const ColumnContainer = ({
                 className="bg-neutral-900 h-[60px] cursor-grab rounded-md rounded-b-none p-3 font-bold border-4 border-neutral-800 flex items-center justify-between"
             >
                 <div className="flex gap-2">
-                    <div className="flex items-center justify-center bg-neutral-800 px-2 py-1 text-sm rounded-full">
-                        0
-                    </div>
-
                     {!editMode && (
                         column.title
                     )}
@@ -122,8 +119,9 @@ export const ColumnContainer = ({
                 <SortableContext
                     items={tasksIds}
                 >
+                    {/* Tarefas */}
                     {tasks.map((task) => (
-                        <TasksCard
+                        <TaskCard
                             key={task.id}
                             task={task}
                             deleteTask={deleteTask}
