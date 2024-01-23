@@ -9,7 +9,6 @@ body,
   @apply bg-black text-white box-border;
 }
 
-/* OUTROS */
 ::-webkit-scrollbar {
   width: 4px;
 }
